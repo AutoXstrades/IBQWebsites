@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07070a">
+  <meta name="description" content="IBQ — Memphis websites you own.">
+  <title>IBQ — HTML Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="#home" aria-label="IBQ home"><span class="brand-mark">IBQ</span><span class="brand-copy">I BUILD QUALITY</span></a>
+      <nav class="desktop-nav" aria-label="Main navigation">
+        <a href="#packages">Packages</a><a href="#quote">Quote</a><a href="#process">Process</a><a href="#faq">FAQ</a>
+      </nav>
+      <a class="btn btn-primary" href="#quote">Start a site</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="home">
+      <div class="shell hero-inner">
+        <div class="hero-orb" aria-hidden="true"></div>
+        <p class="eyebrow">Memphis website studio</p>
+        <h1>I Build<br><span>Quality</span><br>websites.</h1>
+        <p class="hero-sub">A real site you own. No Wix bill. No monthly hosting.</p>
+        <div class="hero-actions"><a class="btn btn-primary" href="#quote">Get a quote</a><a class="btn btn-secondary" href="#packages">See packages</a></div>
+        <div class="pills" aria-label="IBQ benefits"><span>Pay once</span><span>Domain yearly</span><span>Updates $50</span><span>901</span></div>
+      </div>
+    </section>
+
+    <section class="section shell" id="packages">
+      <header class="section-head centered reveal">
+        <p class="eyebrow">Simple pricing</p>
+        <h2>Priced for the work.<br><span>Not a subscription.</span></h2>
+        <p>Pay once for the build. Domain is a yearly renewal. Updates are $50. No monthly hosting.</p>
+      </header>
+      <div class="pricing-grid">
+        <article class="card price-card reveal">
+          <p class="eyebrow">Starter</p><h3>$399</h3>
+          <p class="audience">Simple shops: hair, nails, barber, lashes, lawn, cleaning, food truck, trainer.</p>
+          <ul><li>✓ <span>1–4 pages</span></li><li>✓ <span>Photos</span></li><li>✓ <span>Tap-to-call</span></li><li>✓ <span>Map and hours</span></li><li>✓ <span>No Stripe</span></li></ul>
+          <a class="btn btn-primary package-start" data-package="starter" href="#quote">Start</a>
+        </article>
+        <article class="card price-card featured reveal">
+          <span class="popular">MOST SHOPS</span><p class="eyebrow">Business</p><h3>$799</h3>
+          <p class="audience">Salon, restaurant, contractor, church, daycare.</p>
+          <ul><li>✓ <span>More pages</span></li><li>✓ <span>Gallery or menu</span></li><li>✓ <span>Booking</span></li><li>✓ <span>Contact form</span></li><li>✓ <span>Cards, Apple Pay, Google Pay</span></li></ul>
+          <a class="btn btn-primary package-start" data-package="business" href="#quote">Start</a>
+        </article>
+        <article class="card price-card reveal">
+          <p class="eyebrow cyan">Custom</p><h3>From $1,499</h3>
+          <p class="audience">Quoted first for ideas beyond booking, location, and gallery.</p>
+          <ul><li>✓ <span>AI tools</span></li><li>✓ <span>Agents</span></li><li>✓ <span>News feeds</span></li><li>✓ <span>Custom scope</span></li><li>✓ <span>Quoted first</span></li></ul>
+          <a class="btn btn-secondary package-start" data-package="custom" href="#quote">Start</a>
+        </article>
+      </div>
+      <div class="value-grid reveal"><div class="card"><b>↻</b><span>Updates<strong>$50 each</strong></span></div><div class="card"><b>◎</b><span>Domain<strong>Yearly renewal</strong></span></div><div class="card"><b>▤</b><span>Monthly hosting<strong>$0</strong></span></div></div>
+    </section>
+
+    <section class="section shell" id="process">
+      <header class="section-head reveal">
+        <p class="eyebrow">IBQ build flow</p>
+        <h2>Quote first.<br><span>Build after deposit.</span></h2>
+        <p>Pay in steps. See progress. Stop if it is not right.</p>
+      </header>
+      <div class="process-grid">
+        <article class="card step-card reveal"><b>01</b><h3>Quote</h3><p>Free write-in, or a $5 / 5 min AI ticket.</p></article>
+        <article class="card step-card reveal"><b>02</b><h3>Pay 50%</h3><p>Your deposit unlocks the UI prototype.</p></article>
+        <article class="card step-card reveal"><b>03</b><h3>Prototype</h3><p>UI pictures only, delivered within 7 days.</p></article>
+        <article class="card step-card reveal"><b>04</b><h3>Confirm or stop</h3><p>Approve the look and flow, or stop here.</p></article>
+        <article class="card step-card reveal"><b>05</b><h3>Pay 20%</h3><p>We wire the approved working site.</p></article>
+        <article class="card step-card reveal"><b>06</b><h3>Preview</h3><p>Test a preview URL. The custom domain stays locked.</p></article>
+        <article class="card step-card reveal"><b>07</b><h3>Pay 30%</h3><p>Lock the domain, launch, and take ownership.</p></article>
+      </div>
+      <div class="money-flow card reveal"><div><strong>50%</strong><span>UI</span></div><div><strong>20%</strong><span>Build</span></div><div><strong>30%</strong><span>Launch</span></div></div>
+    </section>
+
+    <section class="section shell" id="quote">
+      <header class="section-head reveal"><p class="eyebrow">Start with the details</p><h2>Your idea. <span>A clear ticket.</span></h2><p>Write it in free, or use the $5 guided AI quote for five focused minutes.</p></header>
+      <div class="quote-tabs reveal" role="tablist" aria-label="Quote type">
+        <button class="active" type="button" role="tab" aria-selected="true" data-tab="free"><b>✎</b> Free quote <span>$0</span></button>
+        <button type="button" role="tab" aria-selected="false" data-tab="ai"><b>✦</b> AI quote <span>$5 / 5 min</span></button>
+      </div>
+      <div class="quote-panel reveal" id="free-panel">
+        <form class="card quote-form" id="quote-form">
+          <fieldset><legend>01 · The basics</legend><div class="form-grid"><label>Business name<input name="business" required placeholder="Your business"></label><label>Owner name<input name="owner" required placeholder="Your name"></label><label>Phone or Instagram<input name="contact" required placeholder="901-555-0100 or @handle"></label><label>Package<select name="package" id="package-select"><option value="starter">Starter — $399</option><option value="business">Business — $799</option><option value="custom">Custom — from $1,499</option></select></label></div></fieldset>
+          <fieldset><legend>02 · The site</legend><div class="form-grid"><label class="wide">Pages<input name="pages" placeholder="Home, Services, Gallery, Contact"></label><label class="wide">Services — name, price, duration<textarea name="services" rows="3" placeholder="Silk press — $85 — 90 min"></textarea></label><label>Primary action<select name="cta"><option>Call</option><option>Text</option><option>Book</option></select></label><label>Hours<input name="hours" placeholder="Mon–Fri, 9–5"></label><label class="wide">Notes<textarea name="notes" rows="3" placeholder="Photos, booking, service area, or anything custom"></textarea></label></div></fieldset>
+          <button class="btn btn-primary full" type="submit">Create prototype ticket</button>
+        </form>
+      </div>
+      <div class="quote-panel" id="ai-panel" hidden>
+        <div class="ai-layout">
+          <div class="card ai-chat">
+            <div class="chat-top"><i></i><span>Guided ticket chat</span><strong id="timer">5:00</strong></div>
+            <div class="chat-body" id="chat-body"><div class="bot-message"><small>IBQ AI</small><h3>Let’s name the idea.</h3><p>Start with the business and the person behind it.</p></div></div>
+            <form class="chat-form" id="chat-form"><label><span id="chat-label">Business name</span><input id="chat-input" autocomplete="off" placeholder="Type your answer"></label><button class="btn btn-primary" type="submit">Save & continue</button></form>
+          </div>
+          <aside class="card live-ticket"><p class="eyebrow">Live ticket</p><h3 id="ticket-title">Your business</h3><div id="ticket-fields"><p>Answers appear here as you build the brief.</p></div></aside>
+        </div>
+      </div>
+      <div class="success card" id="ticket-success" hidden><p class="eyebrow">Ticket created</p><h3>Your idea is in the queue.</h3><p>This static prototype does not send data. The working Next.js app stores the real ticket in your account.</p><a class="btn btn-primary" href="#account">View account preview</a></div>
+    </section>
+
+    <section class="section shell narrow" id="faq">
+      <header class="section-head reveal"><p class="eyebrow">Straight answers</p><h2>Questions, <span>answered.</span></h2><p>No fuzzy retainers. No mystery handoff.</p></header>
+      <div class="faq-list reveal">
+        <details class="card" open><summary>Do I really own the website?<b>+</b></summary><p>Yes. After the final 30% is paid and the site launches, the completed site and domain are yours.</p></details>
+        <details class="card"><summary>Is hosting really $0 a month?<b>+</b></summary><p>Yes. Your domain renews yearly, but there is no monthly hosting bill for these packages.</p></details>
+        <details class="card"><summary>What do I see after the first payment?<b>+</b></summary><p>Your 50% deposit unlocks UI pictures showing the proposed look and flow, due within 7 days.</p></details>
+        <details class="card"><summary>Can I stop after the prototype?<b>+</b></summary><p>Yes. Step 4 is your confirmation point: approve, request changes, or stop.</p></details>
+        <details class="card"><summary>Can I accept payments?<b>+</b></summary><p>The Business package supports cards, Apple Pay, and Google Pay. Starter does not include Stripe.</p></details>
+      </div>
+    </section>
+
+    <section class="section shell" id="account">
+      <header class="dashboard-head reveal"><div><p class="eyebrow">Customer account preview</p><h2>Hey, Demo.</h2><p>Track the work, pay only when the next step is ready, and keep every reference together.</p></div><span class="status">Step 3 of 7</span></header>
+      <article class="card project-card reveal">
+        <div class="project-title"><div><small>#IBQ901</small><h3>Demo Studio</h3><p>Starter package · prototype in progress</p></div><span class="status">Prototype</span></div>
+        <ol class="stepper"><li class="done"><b>1</b><span>Quote</span></li><li class="done"><b>2</b><span>Pay 50%</span></li><li class="current"><b>3</b><span>Prototype</span></li><li><b>4</b><span>Confirm</span></li><li><b>5</b><span>Pay 20%</span></li><li><b>6</b><span>Preview</span></li><li><b>7</b><span>Launch</span></li></ol>
+        <div class="account-grid"><div><h4>Ticket details</h4><dl><div><dt>Owner</dt><dd>Demo Customer</dd></div><div><dt>Contact</dt><dd>901-555-0142</dd></div><div><dt>Services</dt><dd>Signature service — $75 — 60 min</dd></div></dl></div><div class="next-action"><h4>Next action</h4><p>Your UI pictures are being prepared. Nothing is due right now.</p><button class="btn btn-secondary" type="button" id="upload-demo">＋ Add reference photo</button><span id="upload-message" aria-live="polite"></span></div></div>
+        <footer>Source code and domain control unlock after the final step is paid.</footer>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer"><div class="shell"><a class="brand" href="#home"><span class="brand-mark">IBQ</span><span class="brand-copy">I BUILD QUALITY</span></a><p>Memphis websites you own.</p><a href="#home">Back to top ↑</a></div></footer>
+
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <a href="#home"><b>⌂</b><span>Home</span></a><a href="#packages"><b>▦</b><span>Packages</span></a><a href="#process"><b>↳</b><span>Process</span></a><a href="#faq"><b>?</b><span>FAQ</span></a><a href="#quote"><b>↗</b><span>Start</span></a>
+  </nav>
+  <script src="app.js"></script>
+</body>
+</html>
