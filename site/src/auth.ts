@@ -17,19 +17,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     authorize: async (credentials) => {
       const parsed = z.object({ email: z.string().email(), password: z.string().min(8) }).safeParse(credentials);
       if (!parsed.success) return null;
+      if (process.env.NODE_ENV === "production" && parsed.data.email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) return null;
       const user = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
       if (!user?.passwordHash || !(await compare(parsed.data.password, user.passwordHash))) return null;
       return { id: user.id, name: user.name, email: user.email };
     },
   })],
   callbacks: {
-    signIn({ account, profile }) {
-      return account?.provider !== "google" || Boolean(profile?.email && profile.email_verified === true);
+    async signIn({ account, profile }) {
+      if (account?.provider !== "google") return true;
+      if (!profile?.email || profile.email_verified !== true) return false;
+      const existing = await prisma.user.findUnique({ where: { email: profile.email.toLowerCase() }, select: { passwordHash: true } });
+      // Password signups have not proved email ownership; never silently link them to Google.
+      return !existing?.passwordHash;
     },
     async jwt({ token, user, account }) {
       if(account?.provider==="google"&&token.email){
         const email=token.email.toLowerCase();
-        const dbUser=await prisma.user.upsert({where:{email},update:{name:token.name||email.split("@")[0]},create:{email,name:token.name||email.split("@")[0]}});
+        const dbUser=await prisma.$transaction(async tx=>{
+          const existing=await tx.user.findUnique({where:{email}});
+          if(existing?.passwordHash)throw new Error("Use the existing account's sign-in method before linking Google.");
+          return existing||await tx.user.create({data:{email,name:token.name||email.split("@")[0]}});
+        });
         token.id=dbUser.id;
       }else if(user?.id) token.id=user.id;
       return token;

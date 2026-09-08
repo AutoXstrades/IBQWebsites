@@ -18,6 +18,7 @@ export async function signupAction(_: AuthState, formData: FormData): Promise<Au
   const parsed=z.object({ name:z.string().trim().min(2), email:z.string().email(), password:z.string().min(8) }).safeParse({ name:formData.get("name"), email:formData.get("email"), password:formData.get("password") });
   if(!parsed.success) return { error:"Enter your name, a valid email, and a password with at least 8 characters." };
   const email=parsed.data.email.toLowerCase();
+  if (process.env.NODE_ENV === "production" && email === process.env.ADMIN_EMAIL?.toLowerCase()) return { error: "Use Google sign-in for this account." };
   if(await prisma.user.findUnique({where:{email}})) return { error:"An account already exists for that email." };
   await prisma.user.create({data:{name:parsed.data.name,email,passwordHash:await hash(parsed.data.password,12)}});
   try { await signIn("credentials",{email,password:parsed.data.password,redirectTo:"/account"}); }
