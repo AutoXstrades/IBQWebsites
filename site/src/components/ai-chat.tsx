@@ -1,0 +1,25 @@
+"use client";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+
+type Prompt={title:string;copy:string;fields:{name:string;label:string;placeholder?:string}[]};
+const prompts:Prompt[]=[
+  {title:"Let’s name the idea.",copy:"Start with the business and the person behind it.",fields:[{name:"businessName",label:"Business name"},{name:"ownerName",label:"Owner name"},{name:"tagline",label:"Tagline (optional)"}]},
+  {title:"How should people reach you?",copy:"Add the public contact points that belong on the site.",fields:[{name:"phone",label:"Phone"},{name:"email",label:"Email"},{name:"instagram",label:"Instagram"}]},
+  {title:"Where and when?",copy:"Use an address or a service area, plus your normal hours.",fields:[{name:"address",label:"Address or service area"},{name:"hours",label:"Hours"}]},
+  {title:"What pages do you need?",copy:"Separate pages with commas. Business+ can include Booking.",fields:[{name:"pages",label:"Pages",placeholder:"Home, Services, Gallery, Contact"},{name:"cta",label:"Main action",placeholder:"Call, text, or book"}]},
+  {title:"List the services.",copy:"Give each one a name, price, and duration when you know it.",fields:[{name:"services",label:"Services",placeholder:"Silk press — $85 — 90 min"},{name:"reviews",label:"Reviews (optional)"}]},
+  {title:"What visuals are ready?",copy:"Tell us about your hero, work, team photos, and logo.",fields:[{name:"photos",label:"Photos"},{name:"logoUrl",label:"Logo link (optional)"}]},
+  {title:"Booking and payments.",copy:"Business+ can include booking and Stripe checkout.",fields:[{name:"bookingTypes",label:"Booking types"},{name:"availability",label:"Availability"},{name:"stripeScope",label:"Stripe needs"}]},
+  {title:"Anything beyond the standard build?",copy:"Custom AI tools, agents, and feeds are quoted separately.",fields:[{name:"customScope",label:"Custom scope"},{name:"notes",label:"Final notes"}]},
+];
+export function AIChat({ticketId,expiresAt,initial,initialSeconds}:{ticketId:string;expiresAt:string;initial:Record<string,string|null>;initialSeconds:number}){
+  const [index,setIndex]=useState(0),[seconds,setSeconds]=useState(initialSeconds),[busy,setBusy]=useState(false),[error,setError]=useState(""),[confirmed,setConfirmed]=useState(false);const [answers,setAnswers]=useState<Record<string,string>>({});
+  useEffect(()=>{const timer=setInterval(()=>setSeconds(Math.max(0,Math.ceil((new Date(expiresAt).getTime()-Date.now())/1000))),1000);return()=>clearInterval(timer)},[expiresAt]);
+  const locked=seconds<=0;const prompt=prompts[index];const filled=useMemo(()=>({...initial,...answers}),[initial,answers]);
+  async function send(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget).entries()) as Record<string,string>;setBusy(true);setError("");const res=await fetch("/api/ai-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ticketId,answers:data})});const json=await res.json();setBusy(false);if(!res.ok){setError(json.error);return;}setAnswers(v=>({...v,...data}));setIndex(v=>Math.min(prompts.length,v+1));}
+  async function confirm(){setBusy(true);const res=await fetch("/api/ai-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ticketId,confirm:true})});setBusy(false);if(res.ok)setConfirmed(true);}
+  const done=index>=prompts.length;
+  return <div className="ai-chat-layout"><section className="glass-card chat-panel"><div className="chat-top"><span className="live-dot"/> Guided ticket chat <strong>{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,"0")}</strong></div>{confirmed?<div className="chat-finish"><p className="eyebrow">Ticket confirmed</p><h2 className="font-display">That is a clean brief.</h2><Link href="/account" className="btn btn-primary">Open my account</Link></div>:locked||done?<div className="chat-finish"><p className="eyebrow">{locked?"Time is up":"Review time"}</p><h2 className="font-display">Your structured ticket is ready.</h2><p>{locked?"The chat is locked, but every saved answer is in your ticket.":"Confirm the answers below and IBQ will use this ticket for your quote."}</p>{!locked&&<button className="btn btn-primary" disabled={busy} onClick={confirm}>Confirm ticket</button>}</div>:<><div className="assistant-bubble"><span>IBQ AI</span><h2>{prompt.title}</h2><p>{prompt.copy}</p></div><form className="chat-answer" onSubmit={send}>{prompt.fields.map(field=><label key={field.name}>{field.label}<input name={field.name} placeholder={field.placeholder} defaultValue={filled[field.name]||""}/></label>)}{error&&<p className="form-error">{error}</p>}<button className="btn btn-primary" disabled={busy}>{busy?"Saving…":index===prompts.length-1?"Finish ticket":"Save & continue"}</button></form></>}</section>
+    <aside className="glass-card ticket-preview"><p className="eyebrow">Live ticket</p><h2>{filled.businessName||"Your business"}</h2>{prompts.flatMap(p=>p.fields).map(f=>filled[f.name]?<div key={f.name}><span>{f.label}</span><p>{filled[f.name]}</p></div>:null)}</aside></div>;
+}

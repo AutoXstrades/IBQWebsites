@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  tickets      Ticket[]
+}
+
+model Ticket {
+  id              String   @id @default(cuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  quoteType       String   @default("FREE")
+  package         String
+  status          String   @default("OPEN")
+  step            Int      @default(1)
+  businessName    String
+  ownerName       String
+  phone           String?
+  email           String?
+  instagram       String?
+  address         String?
+  hours           String?
+  logoUrl         String?
+  tagline         String?
+  pages           String?
+  services        String?
+  photos          String?
+  cta             String?
+  reviews         String?
+  bookingTypes    String?
+  availability    String?
+  stripeScope     String?
+  customScope     String?
+  notes           String?
+  transcript      String?
+  aiChatStartedAt DateTime?
+  aiChatExpiresAt DateTime?
+  confirmedAt     DateTime?
+  previewUrl      String?
+  quotedPrice     Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  prototypeImages PrototypeImage[]
+  payments         Payment[]
+  uploads          ReferenceUpload[]
+  updateRequests   UpdateRequest[]
+  deliverables     Deliverable[]
+
+  @@index([userId])
+  @@index([status, createdAt])
+}
+
+model Deliverable {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  name      String
+  url       String
+  mimeType  String
+  kind      String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+model PrototypeImage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  url       String
+  createdAt DateTime @default(now())
+  @@index([ticketId])
+}
+
+model ReferenceUpload {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  filename  String
+  url       String
+  createdAt DateTime @default(now())
+  @@index([ticketId])
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  ticketId        String
+  ticket          Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  type            String
+  amount          Int
+  status          String   @default("PENDING")
+  stripeSessionId String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([ticketId, status])
+}
+
+model UpdateRequest {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  details   String
+  amount    Int      @default(5000)
+  status    String   @default("REQUESTED")
+  createdAt DateTime @default(now())
+  @@index([ticketId])
+}

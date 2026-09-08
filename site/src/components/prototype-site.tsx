@@ -1,0 +1,87 @@
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import styles from "./prototype-site.module.css";
+
+type Screen = "home" | "packages" | "services" | "process" | "intake" | "faq";
+const screens:Screen[]=["home","packages","services","process","intake","faq"];
+
+const faqItems=[
+  ["Do I really own the website?","Yes. After the full build is paid and the site launches, the completed site and delivered files are yours."],
+  ["Is hosting really $0 a month?","Yes. We use a no-monthly-bill hosting setup for the packages shown. Your domain renews yearly."],
+  ["What do I get for $50?","A visual prototype that shows the direction before you move into code."],
+  ["What is the $100 downloadable prototype?","It is the next step after the visual: a clickable HTML prototype with files you can download and keep."],
+  ["When does the working site get built?","After you approve the prototype, the $999 full build turns that direction into a custom-coded website with a 72-hour turnaround."],
+  ["What counts as an update?","A focused post-launch content or visual change is $50. Larger new features are quoted before work starts."],
+  ["Can I accept payments?","The $999 Full Website package supports cards, Apple Pay, and Google Pay. The $500 Single Page package does not include Stripe."],
+  ["What is the $5 AI quote?","It is a five-minute guided chat that turns your idea into a structured project ticket you can review and confirm."],
+];
+
+const jobLabels:Record<string,string>={
+  starter:"Single Page — $500",business:"Full Website — $999",custom:"Custom — from $2,500",
+  "proto-visual":"Prototype Visual — $50 · 24 hours","proto-code":"Downloadable prototype with code — $100 · 48 hours","full-build":"Full custom-coded website — $999 · 72 hours",chatbot:"AI chatbot — $250",logo:"Logo — $50",
+};
+
+export function PrototypeSite({authenticated,initialPackage}:{authenticated:boolean;initialPackage:string}){
+  const [screen,setScreen]=useState<Screen>("home");
+  const [job,setJob]=useState(jobLabels[initialPackage]?initialPackage:"");
+  const [colors,setColors]=useState(["#3dffc8","#07070a","#f4f5f7"]);
+  const [message,setMessage]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [recording,setRecording]=useState(false);
+  const [seconds,setSeconds]=useState(0);
+  const [audioUrl,setAudioUrl]=useState("");
+  const recorderRef=useRef<MediaRecorder|null>(null);
+  const streamRef=useRef<MediaStream|null>(null);
+  const chunksRef=useRef<Blob[]>([]);
+
+  useEffect(()=>{
+    const sync=()=>{const raw=location.hash.slice(1);const hash=(raw==="quote"?"intake":raw) as Screen;setScreen(screens.includes(hash)?hash:"home")};
+    sync();window.addEventListener("hashchange",sync);return()=>window.removeEventListener("hashchange",sync);
+  },[]);
+  useEffect(()=>{if(!recording)return;const timer=setInterval(()=>setSeconds(value=>{if(value>=119){recorderRef.current?.stop();setRecording(false);return 120}return value+1}),1000);return()=>clearInterval(timer)},[recording]);
+  useEffect(()=>()=>{if(audioUrl)URL.revokeObjectURL(audioUrl);streamRef.current?.getTracks().forEach(track=>track.stop())},[audioUrl]);
+
+  function go(next:Screen,nextJob?:string){if(nextJob)setJob(nextJob);setScreen(next);history.replaceState(null,"",`#${next}`);window.scrollTo(0,0)}
+  async function record(){try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});streamRef.current=stream;chunksRef.current=[];const recorder=new MediaRecorder(stream);recorderRef.current=recorder;recorder.ondataavailable=event=>{if(event.data.size)chunksRef.current.push(event.data)};recorder.onstop=()=>{stream.getTracks().forEach(track=>track.stop());const url=URL.createObjectURL(new Blob(chunksRef.current,{type:recorder.mimeType||"audio/webm"}));setAudioUrl(previous=>{if(previous)URL.revokeObjectURL(previous);return url});setRecording(false)};setSeconds(0);recorder.start();setRecording(true)}catch{setMessage("Microphone access was blocked. You can type the vision instead.")}}
+  function stop(){if(recorderRef.current?.state!=="inactive")recorderRef.current?.stop();setRecording(false)}
+  function clearRecording(){if(audioUrl)URL.revokeObjectURL(audioUrl);setAudioUrl("");setSeconds(0)}
+  async function submit(event:React.FormEvent<HTMLFormElement>){event.preventDefault();const formElement=event.currentTarget;const form=new FormData(formElement);const requested=String(form.get("job")||"");const packageName=jobLabels[requested]?requested:"custom";const payload={package:packageName,businessName:String(form.get("business")||""),ownerName:String(form.get("name")||""),email:String(form.get("email")||""),cta:String(form.get("action")||""),tagline:String(form.get("oneLiner")||""),customScope:[String(form.get("vision")||""),`Requested service: ${jobLabels[requested]||requested}`,`Brand colors: ${colors.join(", ")}`,`Add-ons: ${String(form.get("addons")||"None")}`].join("\n"),notes:`Needed by: ${String(form.get("deadline")||"Not specified")}${audioUrl?"\nA voice note was recorded during intake.":""}`};localStorage.setItem("ibq-quote-draft",JSON.stringify(payload));if(!authenticated){setMessage("Your intake is saved on this device. Create an account or sign in to send it.");return}setBusy(true);const response=await fetch("/api/tickets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const data=await response.json();setBusy(false);if(!response.ok){setMessage(data.error||"Check the form and try again.");return}localStorage.removeItem("ibq-quote-draft");setMessage(`Ticket ${data.ticket.id.slice(-6).toUpperCase()} created. It is ready in your account.`);formElement.reset();setJob("")}
+
+  const page=(name:Screen)=>`${styles.page} ${screen===name?styles.active:""}`;
+  return <main className={styles.app}>
+    <div className={styles.grid}/><div className={`${styles.orb} ${styles.orbA}`}/><div className={`${styles.orb} ${styles.orbB}`}/>
+    <div className={styles.wrap}>
+      <header className={styles.nav}><button className={styles.brand} onClick={()=>go("home")} aria-label="IBQ home"><span className={styles.logo}>IBQ</span><span className={styles.brandName}>I Build Quality</span></button><nav className={styles.links} aria-label="Main navigation">{(["packages","services","process","faq"] as Screen[]).map(item=><button className={screen===item?styles.active:""} onClick={()=>go(item)} key={item}>{item[0].toUpperCase()+item.slice(1)}</button>)}</nav><button className={`${styles.button} ${styles.buttonSmall}`} onClick={()=>go("intake")}>Start a site</button></header>
+
+      <section className={page("home")} aria-hidden={screen!=="home"}><p className={styles.kicker}>No monthly hosting</p><h1>I Build <span className={styles.neon}>Quality</span><br/>websites.</h1><p className={styles.lede}>A real site you own. No Wix bill. No monthly hosting. Start with a $50 visual prototype, move into the $100 downloadable prototype, then choose the full build when the direction is approved.</p><div className={styles.row}><button className={styles.button} onClick={()=>go("services")}>See services</button><button className={`${styles.button} ${styles.buttonGhost}`} onClick={()=>go("packages")}>Studio packages</button></div><ul className={styles.pills}><li>Pay once</li><li>Domain yearly</li><li>Updates $50</li></ul><div className={styles.conversion}><div className={styles.conversionCopy}><p className={styles.kicker}>Approved the prototype?</p><h2>The full website is next.</h2><p>Move from the $50 visual and $100 downloadable prototype into a fully custom-coded $999 website, delivered in 72 hours.</p></div><button className={styles.conversionAd} onClick={()=>go("intake","full-build")} aria-label="Start the $999 full custom-coded website build"><Image src="/images/ibq-conversion-ad-72h.png" width={1027} height={1532} sizes="(max-width: 640px) 92vw, 560px" alt="IBQ fully custom-coded website package for $999 with a 72-hour turnaround"/></button><button className={`${styles.button} ${styles.conversionButton}`} onClick={()=>go("intake","full-build")}>Start the full build</button></div></section>
+
+      <section className={page("packages")} aria-hidden={screen!=="packages"}><p className={styles.kicker}>Packages</p><h1>Priced for the <span className={styles.neon}>work</span>.<br/>Not a subscription.</h1><p className={styles.lede}>Bigger builds. Pay once. Domain is a yearly renewal. Updates are $50.</p><div className={styles.gridThree}>
+        <article className={styles.card}><p className={styles.label}>Single Page</p><p className={styles.price}>$500</p><p className={styles.who}>Hair, nails, barber, lashes, lawn care, cleaning, food truck, trainer.</p><ul><li>One page</li><li>Photos and tap-to-call</li><li>Map and hours</li></ul><button className={`${styles.button} ${styles.buttonFull}`} onClick={()=>go("intake","starter")}>Start</button></article>
+        <article className={`${styles.card} ${styles.featured}`}><p className={styles.badge}>Most shops</p><p className={styles.label}>Full Website</p><p className={styles.price}>$999</p><p className={styles.who}>Salon, restaurant, contractor, church, daycare.</p><ul><li>More pages</li><li>Gallery or menu</li><li>Stripe, Apple Pay, Google Pay</li></ul><button className={`${styles.button} ${styles.buttonFull}`} onClick={()=>go("intake","full-build")}>Start</button></article>
+        <article className={styles.card}><p className={styles.label}>Custom</p><p className={styles.price}>From $2,500</p><p className={styles.who}>AI tools, agents, news feeds — anything beyond booking, location, and gallery.</p><ul><li>Quoted first</li><li>AI integrations</li><li>Feeds and extra systems</li></ul><button className={`${styles.button} ${styles.buttonGhost} ${styles.buttonFull}`} onClick={()=>go("intake","custom")}>Start</button></article>
+      </div></section>
+
+      <section className={page("services")} aria-hidden={screen!=="services"}><p className={styles.kicker}>Services · Custom coded</p><h1>Pick a build.<br/><span className={styles.neon}>Then fill the intake.</span></h1><p className={styles.lede}>Grok mocks the look. Codex codes it. You own the host.</p><div className={styles.gridTwo}>
+        <article className={`${styles.card} ${styles.featured}`}><p className={styles.badge}>Launch</p><p className={styles.label}>Prototype Visual</p><p className={styles.price}>$50</p><p className={styles.meta}><span>24 hour turnaround</span><span>Look only</span></p><p className={styles.who}>A visual prototype of the landing page or site so you can see the look before a full build.</p><button className={`${styles.button} ${styles.buttonFull}`} onClick={()=>go("intake","proto-visual")}>Start</button></article>
+        <article className={styles.card}><p className={styles.label}>Downloadable prototype</p><p className={styles.price}>$100</p><p className={styles.meta}><span>48 hour turnaround</span><span>With code</span></p><p className={styles.who}>Visual plus the HTML so you can open it, click it, and keep the files.</p><button className={`${styles.button} ${styles.buttonFull}`} onClick={()=>go("intake","proto-code")}>Start</button></article>
+        <article className={`${styles.card} ${styles.featured}`}><p className={styles.badge}>After approval</p><p className={styles.label}>Full custom-coded website</p><p className={styles.price}>$999</p><p className={styles.meta}><span>72-hour turnaround</span><span>Built and launched</span></p><p className={styles.who}>Your approved direction becomes a working website. You own the site and there is no monthly hosting bill.</p><button className={`${styles.button} ${styles.buttonFull}`} onClick={()=>go("intake","full-build")}>Start</button></article>
+        <article className={styles.card}><p className={styles.label}>AI chatbot</p><p className={styles.price}>$250</p><p className={styles.meta}><span>Site add-on</span><span>5 days</span></p><p className={styles.who}>Trained on your info. Answers FAQs and captures leads.</p><button className={`${styles.button} ${styles.buttonFull}`} onClick={()=>go("intake","chatbot")}>Start</button></article>
+      </div><p className={styles.kicker} style={{marginTop:36}}>Add-ons</p><ul className={styles.addons}>{["Extra page","Logo design","Booking calendar","SEO setup","Contact form","Mobile polish","Rush delivery","30-day support"].map(item=><li key={item}><span>{item}</span><strong>$50</strong></li>)}</ul></section>
+
+      <section className={page("process")} aria-hidden={screen!=="process"}><p className={styles.kicker}>Process</p><h1>See it first.<br/><span className={styles.neon}>Then build it.</span></h1><p className={styles.lede}>Each step is clear before you move forward: visual, downloadable prototype, approval, then the complete website.</p><div className={styles.gridThree}>{[["01 · $50 visual","See the look and direction before code."],["02 Review","Request the focused changes needed to lock the direction."],["03 · $100 prototype","Receive the clickable HTML prototype and downloadable files."],["04 Approve","Confirm that this is the website you want built."],["05 · $999 full build","IBQ turns the approved direction into the working website."],["06 · 72 hours","Receive the finished build, launch it, and own the site."]].map(([title,copy])=><article className={styles.card} key={title}><p className={styles.label}>{title}</p><p className={styles.who}>{copy}</p></article>)}</div></section>
+
+      <section className={page("intake")} aria-hidden={screen!=="intake"}><p className={styles.kicker}>Intake</p><h1>Talk it out.<br/><span className={styles.neon}>Then I build.</span></h1><p className={styles.lede}>Pick the service, record a voice note or type the vision, and lock your colors.</p><form className={styles.form} onSubmit={submit}>
+        <label>Service<select name="job" required value={job} onChange={event=>setJob(event.target.value)}><option value="">Select a service</option><optgroup label="Website packages"><option value="starter">Single Page — $500</option><option value="full-build">Full custom-coded website — $999 · 72 hours</option><option value="custom">Custom — from $2,500</option></optgroup><optgroup label="Services"><option value="proto-visual">Prototype Visual — $50 · 24 hours</option><option value="proto-code">Downloadable prototype with code — $100 · 48 hours</option><option value="chatbot">AI chatbot — $250</option><option value="logo">Logo — $50</option></optgroup></select></label>
+        <div className={styles.formRow}><label>Your name<input name="name" required minLength={2}/></label><label>Email<input name="email" type="email" required/></label></div><div className={styles.formRow}><label>Business<input name="business" required minLength={2}/></label><label>Needed by<input name="deadline" placeholder="Date or ASAP"/></label></div>
+        <div className={styles.recorder}><p className={styles.recorderStatus}>{recording?`Recording… ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,"0")} of 2:00`:audioUrl?"Voice note saved.":"Ready to record."}</p><div className={styles.row}><button type="button" className={styles.button} onClick={record} disabled={recording}>Record voice note</button><button type="button" className={`${styles.button} ${styles.buttonGhost}`} onClick={stop} disabled={!recording}>Stop</button><button type="button" className={`${styles.button} ${styles.buttonGhost}`} onClick={clearRecording} disabled={!audioUrl}>Clear</button></div>{audioUrl&&<audio src={audioUrl} controls/>}</div>
+        <label>Or type the vision<textarea name="vision" rows={4} placeholder="What should this feel like?"/></label><label>One sentence<input name="oneLiner" placeholder="What should visitors know right away?"/></label><label>Main action<select name="action"><option>Call me</option><option>Fill out a form</option><option>Buy / book</option><option>Visit another link</option></select></label><p className={styles.fine}>Three brand colors included.</p><div className={styles.swatches}>{colors.map((color,index)=><label className={styles.swatch} key={index}>Color {index+1}<input type="color" value={color} onChange={event=>setColors(current=>current.map((item,itemIndex)=>itemIndex===index?event.target.value:item))}/><span className={styles.hex}>{color}</span></label>)}</div><div className={styles.blend} style={{background:`linear-gradient(90deg,${colors.join(",")})`}}/><label>Add-ons<input name="addons" placeholder="SEO, calendar, rush..."/></label><button className={`${styles.button} ${styles.buttonFull}`} disabled={busy}>{busy?"Sending…":"Send intake"}</button>{message&&<p className={styles.success} role="status">{message}{!authenticated&&<> <Link href="/signup">Create account</Link> or <Link href="/login">sign in</Link>.</>}</p>}</form></section>
+
+      <section className={page("faq")} aria-hidden={screen!=="faq"}><p className={styles.kicker}>FAQ</p><h1>Straight <span className={styles.neon}>answers.</span></h1><div className={styles.faq}>{faqItems.map(([question,answer],index)=><details open={index===0} key={question}><summary>{question}</summary><p>{answer}</p></details>)}</div></section>
+
+      <footer className={styles.footer}><span className={styles.logo}>IBQ</span><p>I Build Quality · You own the site. No monthly. Ever.</p><Link href={authenticated?"/account":"/login"}>{authenticated?"Customer account":"Customer sign in"} →</Link></footer>
+    </div>
+  </main>;
+}
