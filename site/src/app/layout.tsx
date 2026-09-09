@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   title: { default: "IBQ — I Build Quality websites", template: "%s | IBQ" },
   description: "Quality websites you own. Pay once, launch right, and skip the monthly hosting bill.",
+  applicationName: "IBQ Websites",
+  appleWebApp: { title: "IBQ Websites" },
   openGraph: { title:"I Build Quality websites.", description:"Quality websites you own." },
   twitter: { card:"summary", title:"I Build Quality websites.", description:"Quality websites you own." },
 };
