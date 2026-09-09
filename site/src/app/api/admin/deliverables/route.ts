@@ -1,6 +1,8 @@
 import { removeStoredFile, storeFile } from "@/lib/storage";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { apiError, formBody, limit, sameOrigin, SafeError } from "@/lib/security";
+import { validateFile } from "@/lib/upload-validation";
 
 const extensions:Record<string,string>={
   "image/jpeg":"jpg","image/png":"png","image/webp":"webp","application/pdf":"pdf","application/zip":"zip",
@@ -10,7 +12,11 @@ const extensions:Record<string,string>={
 export async function POST(request:Request){
   const session=await auth();
   if(!session?.user?.email||session.user.email.toLowerCase()!==(process.env.ADMIN_EMAIL||"").toLowerCase())return Response.json({error:"Forbidden"},{status:403});
-  const data=await request.formData();
+  try {
+  sameOrigin(request);
+  if(Date.now()-session.user.authenticatedAt>15*60000)throw new SafeError("Sign in again before delivering files.",403);
+  await limit([{scope:"admin-upload",subject:session.user.id,max:60,seconds:3600}]);
+  const data=await formBody(request);
   const ticketId=String(data.get("ticketId")||"");
   const name=String(data.get("name")||"").trim().slice(0,100);
   const file=data.get("file");
@@ -20,11 +26,14 @@ export async function POST(request:Request){
   if(!await prisma.ticket.findUnique({where:{id:ticketId},select:{id:true}}))return Response.json({error:"Ticket not found."},{status:404});
   let url: string | undefined;
   try {
-    url=await storeFile("deliverables",ticketId,file,extensions[file.type]);
-    const deliverable=await prisma.deliverable.create({data:{ticketId,name,url,mimeType:file.type,kind:file.type.startsWith("image/")?"IMAGE":"FILE"}});
+    const clean=await validateFile(file);
+    url=await storeFile("deliverables",ticketId,clean.file,clean.extension);
+    const deliverable=await prisma.deliverable.create({data:{ticketId,name,url,mimeType:clean.file.type,kind:clean.file.type.startsWith("image/")?"IMAGE":"FILE"}});
+    await prisma.auditEvent.create({data:{actorId:session.user.id,action:"DELIVERABLE_ADDED",ticketId,details:JSON.stringify({deliverableId:deliverable.id})}});
     return Response.json({deliverable:{id:deliverable.id,name:deliverable.name,url:`/api/files/deliverable/${deliverable.id}`}});
   } catch {
     if(url)await removeStoredFile(url).catch(()=>{});
     return Response.json({error:"Upload unavailable. Please try again."},{status:503});
   }
+  }catch(error){return apiError(error);}
 }

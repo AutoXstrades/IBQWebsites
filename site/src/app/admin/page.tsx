@@ -4,7 +4,7 @@ import { ArrowLeft, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { isFixedService } from "@/lib/stripe";
 import { requireAdmin } from "@/lib/admin";
-import { attachProjectAssets, markPayment, setProjectStep } from "@/app/actions/admin-actions";
+import { attachProjectAssets, markPayment, setProjectStep, revokeUserSessions } from "@/app/actions/admin-actions";
 import { AdminDeliverableForm } from "@/components/admin-deliverable-form";
 import { SiteHeader } from "@/components/site-header";
 
@@ -25,11 +25,11 @@ export default async function Admin(){
       <div className="admin-forms">
         <form action={setProjectStep} className="admin-form"><input type="hidden" name="ticketId" value={ticket.id}/><label>Project step<select name="step" defaultValue={ticket.step}>{(isFixedService(ticket.package)?[1,2,3,4]:[1,2,3,4,5,6,7]).map(x=><option value={x} key={x}>{x}</option>)}</select></label><label>Quoted total (USD)<input name="quotedPrice" type="number" min="0.01" step=".01" defaultValue={ticket.quotedPrice?(ticket.quotedPrice/100).toFixed(2):""} placeholder={ticket.package==="custom"?"Required before deposit":"Optional"}/></label><button className="btn btn-secondary">Save quote & step</button></form>
         <form action={attachProjectAssets} className="admin-form"><input type="hidden" name="ticketId" value={ticket.id}/><label>Prototype image URL<input name="imageUrl" type="url" placeholder="https://…"/></label><label>Preview URL<input name="previewUrl" type="url" defaultValue={ticket.previewUrl||""} placeholder="https://…"/></label><button className="btn btn-secondary">Attach</button></form>
-        <form action={markPayment} className="admin-form"><input type="hidden" name="ticketId" value={ticket.id}/><label>Payment<select name="type">{isFixedService(ticket.package)&&<option value="FULL">Full service payment</option>}<option value="DEPOSIT">50% deposit</option><option value="BUILD">20% build</option><option value="LAUNCH">30% launch</option><option value="AI_QUOTE">AI quote</option></select></label><label>Amount (USD)<input name="amount" type="number" min="0" step=".01" required/></label><button className="btn btn-secondary">Mark paid</button></form>
+        <form action={markPayment} className="admin-form"><input type="hidden" name="ticketId" value={ticket.id}/><label>Payment<select name="type">{isFixedService(ticket.package)&&<option value="FULL">Full service payment</option>}<option value="DEPOSIT">50% deposit</option><option value="BUILD">20% build</option><option value="LAUNCH">30% launch</option></select></label><label>Amount (USD)<input name="amount" type="number" min="0.01" step=".01" required/></label><label>Reason<input name="reason" minLength={8} maxLength={300} required/></label><label>Receipt reference<input name="receipt" minLength={3} maxLength={100} required/></label><label><input type="checkbox" name="confirmed" value="yes" required/> I verified this payment</label><button className="btn btn-secondary">Mark paid</button></form>
       </div>
       <AdminDeliverableForm ticketId={ticket.id}/>
       <footer>{ticket.payments.filter(p=>p.status==="PAID").length} paid payment(s) · {ticket.prototypeImages.length} prototype image(s) · {ticket.deliverables.length} delivered file(s)</footer>
     </article>)}</section>
-    <section><h2 className="section-title font-display"><Users/> Users</h2><div className="user-table glass-card">{users.map(user=><div key={user.id}><span><strong>{user.name}</strong><small>{user.email}</small></span><span>{user._count.tickets} ticket(s)</span><time>{user.createdAt.toLocaleDateString()}</time></div>)}</div></section>
+    <section><h2 className="section-title font-display"><Users/> Users</h2><div className="user-table glass-card">{users.map(user=><div key={user.id}><span><strong>{user.name}</strong><small>{user.email}</small></span><span>{user._count.tickets} ticket(s)</span><time>{user.createdAt.toLocaleDateString()}</time><form action={revokeUserSessions}><input type="hidden" name="userId" value={user.id}/><button className="btn btn-secondary">Revoke sessions</button></form></div>)}</div></section>
   </main></>;
 }

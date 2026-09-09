@@ -1,17 +1,20 @@
-import { z } from "zod";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { notifyAdmin } from "@/lib/notify";
 import { packageCents } from "@/lib/stripe";
-
-const schema=z.object({
-  package:z.enum(["starter","business","custom","proto-visual","proto-code","full-build","chatbot","logo"]),businessName:z.string().min(2),ownerName:z.string().min(2),phone:z.string().optional(),email:z.string().email().optional().or(z.literal("")),instagram:z.string().optional(),address:z.string().optional(),hours:z.string().optional(),logoUrl:z.string().optional(),tagline:z.string().optional(),pages:z.array(z.string()).optional(),services:z.string().optional(),photos:z.string().optional(),cta:z.string().optional(),reviews:z.string().optional(),bookingTypes:z.string().optional(),availability:z.string().optional(),stripeScope:z.string().optional(),customScope:z.string().optional(),notes:z.string().optional()
-});
-export async function POST(request:Request){
-  const session=await auth(); if(!session?.user?.id)return Response.json({error:"Sign in to create your ticket."},{status:401});
-  const parsed=schema.safeParse(await request.json()); if(!parsed.success)return Response.json({error:"Check the required fields and try again."},{status:400});
-  const product=parsed.data.package==="business"?"full-build":parsed.data.package;
-  const ticket=await prisma.ticket.create({data:{...parsed.data,package:product,quotedPrice:product==="custom"?null:packageCents[product],pages:JSON.stringify(parsed.data.pages||[]),userId:session.user.id,email:parsed.data.email||session.user.email}});
-  await notifyAdmin(`New IBQ ${ticket.package} quote`,`${ticket.businessName} — ${ticket.ownerName}\nTicket ${ticket.id}\n${ticket.notes||"No notes"}`);
-  return Response.json({ticket:{id:ticket.id}});
+import { ticketSchema } from "@/lib/validation";
+import { apiError, jsonBody, limit, sameOrigin, SafeError, serial } from "@/lib/security";
+export async function POST(request: Request) {
+  const session=await auth();if(!session?.user?.id)return Response.json({error:"Sign in to create your ticket."},{status:401});
+  try {
+    sameOrigin(request);
+    await limit([{scope:"tickets",subject:session.user.id,max:5,seconds:86400}]);
+    const parsed=ticketSchema.safeParse(await jsonBody(request));if(!parsed.success)throw new SafeError("Check required fields and text lengths.");
+    const product=parsed.data.package==="business"?"full-build":parsed.data.package;
+    const ticket=await serial(async tx=>{
+      if(await tx.ticket.count({where:{userId:session.user.id}})>=25)throw new SafeError("Contact IBQ before opening more projects.",429);
+      return tx.ticket.create({data:{...parsed.data,package:product,quotedPrice:product==="custom"?null:packageCents[product],pages:JSON.stringify(parsed.data.pages||[]),userId:session.user.id,email:parsed.data.email||session.user.email}});
+    });
+    await notifyAdmin("New ticket",ticket.id);
+    return Response.json({ticket:{id:ticket.id}});
+  }catch(error){return apiError(error);}
 }

@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { retrieveFile } from "@/lib/storage";
-import { isFixedService } from "@/lib/stripe";
+import { entitled } from "@/lib/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,15 +17,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ kin
   const admin = Boolean(process.env.ADMIN_EMAIL && session.user.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase());
   if (!file || (!admin && file.ticket.userId !== session.user.id)) return new Response("File not found.", { status: 404 });
   if (!admin && "kind" in file && file.kind === "FILE") {
-    const required = isFixedService(file.ticket.package) ? "FULL" : "LAUNCH";
-    if (!file.ticket.payments.some(payment => payment.type === required && payment.status === "PAID")) {
+    if (!entitled(file.ticket)) {
       return new Response("Files unlock after payment.", { status: 403 });
     }
   }
   try {
     const data = await retrieveFile(file.url);
     const headers: Record<string, string> = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" };
-    if (data.signedUrl) return new Response(null, { status: 302, headers: { ...headers, Location: data.signedUrl } });
+    headers["Content-Security-Policy"] = "sandbox; default-src 'none'; frame-ancestors 'none'";
     const name = "filename" in file ? file.filename : file.name;
     const ext = file.url.split(".").pop() || "";
     const mime = "mimeType" in file ? file.mimeType : ({ jpg: "image/jpeg", png: "image/png", webp: "image/webp" } as Record<string, string>)[ext] || "application/octet-stream";

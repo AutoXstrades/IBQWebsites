@@ -4,6 +4,7 @@ import "./globals.css";
 
 const outfit = Outfit({ variable: "--font-outfit", subsets: ["latin"] });
 const syne = Syne({ variable: "--font-syne", subsets: ["latin"] });
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),

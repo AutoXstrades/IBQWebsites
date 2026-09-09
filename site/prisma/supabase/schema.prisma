@@ -13,6 +13,8 @@ model User {
   name         String
   email        String   @unique
   passwordHash String?
+  sessionVersion Int @default(0)
+  disabledAt DateTime?
   createdAt    DateTime @default(now())
   tickets      Ticket[]
 }
@@ -102,9 +104,38 @@ model Payment {
   amount          Int
   status          String   @default("PENDING")
   stripeSessionId String?  @unique
+  stripePaymentIntentId String? @unique
+  checkoutKey String? @unique
+  currency String @default("usd")
+  expiresAt DateTime?
+  expectedStep Int?
+  paidAt DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   @@index([ticketId, status])
+}
+
+model RateLimit {
+  id String @id
+  count Int @default(0)
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
+model StripeEvent {
+  id String @id
+  type String
+  createdAt DateTime @default(now())
+}
+
+model AuditEvent {
+  id String @id @default(cuid())
+  actorId String
+  action String
+  ticketId String?
+  details String
+  createdAt DateTime @default(now())
+  @@index([createdAt])
 }
 
 model UpdateRequest {
