@@ -3,14 +3,15 @@
 ## Current resources
 
 - Website domain: `ibqwebsites.com` (GoDaddy).
-- Google Cloud project: `ibq-websites`. The owner approved Google's User Data Policy and created `IBQ Websites — Web`. Its ID and secret are configured in the git-ignored local and Supabase deployment environments. The live Vercel environment is not configured yet.
+- Google Cloud project: `ibq-websites`. The owner approved Google's User Data Policy and created `IBQ Websites — Web`. Its ID and secret are configured locally and in Vercel's production environment. End-to-end Google login on the custom domain remains unverified.
+- Live app: https://ibqwebsites.com (backup deployment URL: https://ibq-websites.vercel.app). Vercel project `ibq-websites` (`prj_gA6cLQ4hLB7qMOrEsp6CFBAHD8Wg`), team `nickvongii-3687s-projects`. First production deployment `dpl_3qEJoMfJ3MiJeaK4t7LJgmVahx9K` is READY.
 - Supabase project: `hgkjpfpqjxsqeppapiyl`, East US. PostgreSQL tables are migrated, RLS enabled, Data API disabled, and `ibq-private` storage is private.
 - The local `.env.supabase.local` contains server credentials for the IBQ project and is git-ignored. Do not upload it to GitHub or expose it to the browser.
 - Existing SQLite demo data is preserved in `prisma/dev.db`. It has not been copied into the live database.
 
 ## Google OAuth
 
-The **Web application** client `IBQ Websites — Web` exists in project `ibq-websites`. Do not create a duplicate. Local sign-in reaches Google's account chooser successfully; the owner must finish consent before end-to-end login can be verified.
+The **Web application** client `IBQ Websites — Web` exists in project `ibq-websites`. Do not create a duplicate. Local sign-in reached Google's account chooser; the delayed return failed because its PKCE cookie expired. Local `AUTH_URL` is now explicitly `http://localhost:3000` to avoid error redirects to `0.0.0.0`. Repeat a fresh login on the custom domain after DNS/TLS is verified; do not reuse an old authorization code.
 
 Authorized JavaScript origins:
 
@@ -34,9 +35,11 @@ Save the client ID and secret as `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` in Ve
 
 ## Vercel
 
-The owner is signed in, but the selected team is on **Hobby**. Vercel restricts Hobby to personal, non-commercial use, so do not deploy this commercial IBQ site on that plan. The owner must choose a commercial plan or another host before deployment. No subscription has been started and no DNS records have been changed. Official policy: https://vercel.com/docs/plans/hobby
+The owner upgraded the selected Vercel team to **Pro** and approved Vercel CLI 59.12.0 sign-in. The official CLI successfully created/configured the project, connected GitHub, installed 13 production environment variables, and deployed the app. Production uses Next.js, Node 22.x, root `site`, `npm ci`, and `npm run build`. Secrets were passed through stdin and stored as Vercel secrets, not command-line arguments. No cloud demo seeding was performed. Preview/development environments were deliberately not populated with production credentials.
 
-The complete Next.js application is now in the `site/` directory on the `codex/ibq-cloud-app` branch of `AutoXstrades/IBQWebsites`. The original static prototype remains untouched on `main`. Import that application branch into Vercel with **Root Directory = site**. Do not deploy only the static root `index.html` and expect accounts/payments to work. The application source contains no local environment secrets or SQLite demo database.
+The complete Next.js application is now in the `site/` directory on both `main` and `codex/ibq-cloud-app` of `AutoXstrades/IBQWebsites` (commit `6430937`). The fast-forward only added files under `site/`; the original static prototype and vault files remain unchanged. Configure Vercel with **Root Directory = site**. Do not deploy only the static root `index.html` and expect accounts/payments to work. The application source contains no local environment secrets or SQLite demo database.
+
+Production admin email/password registration and login are blocked: the admin must use verified Google sign-in. Existing unverified password accounts are not silently merged into Google accounts. The production build and TypeScript/lint checks pass; production-mode tests confirm customer password login works, admin password login is denied, and missing payment keys fail closed.
 
 Use the Next.js framework preset, Node 22+, and `npm run build`. Do not run demo seeding in Vercel. Configure:
 
@@ -53,7 +56,19 @@ Use the Next.js framework preset, Node 22+, and `npm run build`. Do not run demo
 
 The build chooses PostgreSQL automatically when `DATABASE_URL` is a PostgreSQL URL. `npm run db:deploy` applies committed PostgreSQL migrations without a reset. Initial cloud migration has already been applied. Do not point preview deployments at a production customer database unless explicitly intended.
 
-After Vercel deploys successfully, add `ibqwebsites.com` and `www.ibqwebsites.com` to that project. Copy the exact DNS records Vercel supplies into GoDaddy. The domain currently points to GoDaddy WebsiteBuilder; leave its DNS intact until there is a working Vercel target. Keep unrelated mail/TXT records.
+Both `ibqwebsites.com` and `www.ibqwebsites.com` are attached to the Vercel project. GoDaddy identity verification was completed, and the A record is saved as `216.150.1.1`. The existing www CNAME remains `ibqwebsites.com.`. Vercel verifies **both domains configured correctly**, so no additional DNS change is required. Its alternative/recommended records are recorded here for reference, not as outstanding work:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| A | @ | 216.150.1.1 |
+| A | @ | 216.150.16.1 |
+| CNAME | www | 052eb35478a6ceb1.vercel-dns-016.com. |
+
+The old WebsiteBuilder A record (76.223.105.230 / 13.248.243.5) was replaced after the owner's verification. All other GoDaddy records were preserved, including NS/SOA, pay, _domainconnect and _dmarc. An optional www CNAME edit was cancelled without saving after Vercel confirmed the existing alias is valid. GoDaddy nameservers remain ns43/ns44.domaincontrol.com; do not change them just because `domains inspect` displays Vercel's optional nameserver suggestion.
+
+Vercel issued a managed certificate for both names. Real HTTPS requests to the apex home, www home, login, and Auth.js provider endpoint succeeded with HTTP 200. The www domain now has a Vercel 308 redirect to the apex, verified on `/login`, so authentication cookies consistently use `ibqwebsites.com` and do not split between hosts. Google sign-in on the live domain reaches the expected account chooser with the correct HTTPS callback and only openid/profile/email scopes. The owner must finish this fresh flow before authenticated dashboard/admin access can be marked verified.
+
+Hosted checks passed: public home/packages/login/provider endpoints return 200; account/admin return 307 when unauthenticated; private file route returns 401. The cloud build generated PostgreSQL Prisma Client successfully and audited 425 packages with zero vulnerabilities. At a 390×844 phone viewport, the vault opens, scrolling reaches the footer, and document width stays within the viewport. The $999 ad shows the 72-hour wording. These checks do not yet prove a complete authenticated customer purchase/delivery flow.
 
 ## Storage and testing
 
@@ -69,4 +84,4 @@ node --env-file=.env.supabase.local scripts/check-supabase.mjs
 
 The check rolls back synthetic database records and removes its synthetic storage object. Restore the SQLite Prisma client before local development with `npm run db:generate` in a fresh shell. Stop a running local server before regenerating Prisma on Windows (it holds the engine DLL open).
 
-Local fake payments require `ALLOW_LOCAL_TEST_PAYMENTS=true`. They are always disabled in production. Missing Stripe credentials therefore cannot silently unlock paid deliverables. Google login, Stripe webhooks, production notification email, custom-domain DNS/TLS, and a full customer purchase/delivery flow still need live verification before launch.
+Local fake payments require `ALLOW_LOCAL_TEST_PAYMENTS=true`. They are always disabled in production. Missing Stripe credentials therefore cannot silently unlock paid deliverables. Custom-domain DNS/TLS is verified. End-to-end Google login, Stripe webhooks, production notification email, and a full customer purchase/delivery flow still need live verification before accepting customers/payments.
