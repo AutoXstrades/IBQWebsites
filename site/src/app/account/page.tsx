@@ -34,8 +34,8 @@ export default async function Account(){
   });
   const isAdmin=session.user.email?.toLowerCase()===(process.env.ADMIN_EMAIL||"").toLowerCase();
   return <><SiteHeader/><main className="shell page-pad">
-    <header className="dashboard-head"><div><p className="eyebrow">Customer account</p><h1 className="font-display">Hey, {session.user.name?.split(" ")[0]}.</h1><p>Your project details, progress, payments, reference uploads, and delivered files all stay here.</p></div><div className="account-actions">{isAdmin&&<Link href="/admin" className="btn btn-secondary">Admin</Link>}<form action={logoutAction}><button className="btn btn-secondary"><LogOut size={18}/>Log out</button></form></div></header>
-    <SavedDraftNotice/>
+    <header className="dashboard-head"><div><p className="eyebrow">Customer account</p><h1 className="font-display">Hey, {session.user.name?.split(" ")[0]}.</h1><p>Your project details, progress, payments, reference uploads, and delivered files all stay here.</p></div><div className="account-actions">{isAdmin&&<Link href="/admin" className="btn btn-secondary">Admin</Link>}<form action={logoutAction}><button className="btn btn-secondary"><LogOut size={18}/>Log out all devices</button></form></div></header>
+    <SavedDraftNotice userId={session.user.id}/>
     {tickets.length===0?<section className="glass-card empty-state"><p className="eyebrow">No ticket yet</p><h2 className="font-display">Let’s get the idea on paper.</h2><Link className="btn btn-primary" href="/#intake">Start a quote</Link></section>:tickets.map(ticket=>{
       const steps=serviceSteps[ticket.package]||studioSteps;
       const fixed=isFixedService(ticket.package);

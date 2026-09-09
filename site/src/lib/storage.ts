@@ -42,9 +42,10 @@ export async function retrieveFile(url: string) {
   if (url.startsWith(`supabase://${bucket}/`)) {
     const remote = storage();
     if (!remote) throw new Error("Storage unavailable");
-    const { data, error } = await remote.createSignedUrl(url.slice(`supabase://${bucket}/`.length), 60);
+    const { data, error } = await remote.download(url.slice(`supabase://${bucket}/`.length));
     if (error || !data) throw new Error("File unavailable");
-    return { signedUrl: data.signedUrl };
+    if (data.size > 4 * 1024 * 1024) throw new Error("File exceeds delivery limit");
+    return { bytes: Buffer.from(await data.arrayBuffer()) };
   }
   return { bytes: await readFile(localPath(url)) };
 }

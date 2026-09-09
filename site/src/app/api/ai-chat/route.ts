@@ -1,16 +1,29 @@
+import { z } from "zod";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
-
-const allowed=new Set(["businessName","ownerName","phone","email","instagram","address","hours","logoUrl","tagline","pages","services","photos","cta","reviews","bookingTypes","availability","stripeScope","customScope","notes"]);
-const requests=new Map<string,number[]>();
+import { ticketSchema } from "@/lib/validation";
+import { apiError, jsonBody, limit, sameOrigin, serial, SafeError } from "@/lib/security";
+const fields=ticketSchema.omit({package:true}).partial().extend({pages:z.string().max(500).optional()});
+const schema=z.object({ticketId:z.string().max(100),confirm:z.boolean().optional(),answers:fields.optional()}).strict();
 export async function POST(request:Request){
-  const session=await auth();if(!session?.user?.id)return Response.json({error:"Unauthorized"},{status:401});const now=Date.now();const recent=(requests.get(session.user.id)||[]).filter(t=>now-t<60000);if(recent.length>=12)return Response.json({error:"Slow down for a moment."},{status:429});recent.push(now);requests.set(session.user.id,recent);
-  const body=await request.json();const ticket=await prisma.ticket.findFirst({where:{id:String(body.ticketId),userId:session.user.id},include:{payments:true}});if(!ticket||ticket.quoteType!=="AI")return Response.json({error:"Ticket not found."},{status:404});if(!ticket.payments.some(p=>p.type==="AI_QUOTE"&&p.status==="PAID"))return Response.json({error:"Payment is still processing."},{status:402});
-  if(!ticket.aiChatExpiresAt||ticket.aiChatExpiresAt.getTime()<=now)return Response.json({error:"This five-minute chat has ended.",locked:true},{status:423});
-  if(body.confirm){await prisma.ticket.update({where:{id:ticket.id},data:{status:"OPEN",confirmedAt:new Date()}});return Response.json({ok:true,confirmed:true});}
-  const answers=body.answers&&typeof body.answers==="object"?body.answers:{};const entries=Object.entries(answers).filter(([key,value])=>allowed.has(key)&&typeof value==="string"&&value.trim());if(!entries.length)return Response.json({error:"Add at least one answer."},{status:400});
-  const transcript=JSON.parse(ticket.transcript||"[]") as unknown[];transcript.push({role:"user",answers:Object.fromEntries(entries),at:new Date().toISOString()});
-  const updates:Record<string,string>={transcript:JSON.stringify(transcript),status:"AI_ACTIVE"};for(const [key,raw] of entries){const value=String(raw).trim();updates[key]=key==="pages"?JSON.stringify(value.split(",").map(x=>x.trim()).filter(Boolean)):value;}
-  await prisma.ticket.update({where:{id:ticket.id},data:updates});
-  return Response.json({ok:true,expiresAt:ticket.aiChatExpiresAt});
+  const session=await auth();if(!session?.user?.id)return Response.json({error:"Unauthorized"},{status:401});
+  try{
+    sameOrigin(request);await limit([{scope:"ai-chat",subject:session.user.id,max:12,seconds:60}]);
+    const parsed=schema.safeParse(await jsonBody(request));if(!parsed.success)throw new SafeError("Check the answer lengths and formats.");
+    const body=parsed.data;
+    const result=await serial(async tx=>{
+      const ticket=await tx.ticket.findFirst({where:{id:body.ticketId,userId:session.user.id},include:{payments:true}});
+      if(!ticket||ticket.quoteType!=="AI")throw new SafeError("Ticket not found.",404);
+      if(!ticket.payments.some(p=>p.type==="AI_QUOTE"&&p.status==="PAID"&&p.amount===500)||ticket.status==="PAYMENT_REVIEW")throw new SafeError("Payment is required.",402);
+      if(body.confirm){if(!ticket.aiChatStartedAt)throw new SafeError("Chat has not started.");await tx.ticket.update({where:{id:ticket.id},data:{status:"OPEN",confirmedAt:new Date()}});return {ok:true,confirmed:true};}
+      if(ticket.confirmedAt||!ticket.aiChatExpiresAt||ticket.aiChatExpiresAt.getTime()<=Date.now())throw new SafeError("This chat is locked.",423);
+      const entries=Object.entries(body.answers||{}).filter(([,v])=>typeof v==="string"&&v.trim());
+      if(!entries.length)throw new SafeError("Add an answer.");
+      const transcript=JSON.parse(ticket.transcript||"[]") as unknown[];
+      if(transcript.length>=60)throw new SafeError("Chat message limit reached.",429);
+      transcript.push({role:"user",answers:Object.fromEntries(entries),at:new Date().toISOString()});
+      const updates:Record<string,string>={transcript:JSON.stringify(transcript),status:"AI_ACTIVE"};
+      for(const [key,value] of entries)updates[key]=key==="pages"?JSON.stringify(String(value).split(",").slice(0,12).map(x=>x.trim())):String(value).trim();
+      await tx.ticket.update({where:{id:ticket.id},data:updates});return {ok:true,expiresAt:ticket.aiChatExpiresAt};
+    });return Response.json(result);
+  }catch(error){return apiError(error);}
 }

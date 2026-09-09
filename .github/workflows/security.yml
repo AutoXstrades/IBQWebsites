@@ -1,0 +1,40 @@
+name: Security
+on:
+  pull_request:
+  push:
+    branches: [main, 'codex/**']
+  schedule:
+    - cron: '17 11 * * 1'
+permissions:
+  contents: read
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  security:
+    name: Security checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: site
+    env:
+      DATABASE_URL: file:./dev.db
+      AUTH_SECRET: isolated-ci-secret-not-for-production
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      PAYMENTS_MODE: off
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+      - run: npm audit --audit-level=low
+      - run: npm run lint
+      - run: npm run test:security
+      - run: npm run build
+      - run: node scripts/check-tracked-secrets.mjs
