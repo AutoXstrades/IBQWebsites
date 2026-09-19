@@ -28,6 +28,25 @@ test("production has no password provider; revoked, disabled and stale admin ses
 let seq=0;
 async function fixture(type="LAUNCH",step=6){const id=String(++seq);const user=await prisma.user.create({data:{name:"Test",email:id+"@example.invalid"}});const ticket=await prisma.ticket.create({data:{userId:user.id,package:"starter",step,businessName:"Test",ownerName:"Test",quotedPrice:50000,status:"IN_PROGRESS",quoteType:type==="AI_QUOTE"?"AI":"FREE"}});const p=await prisma.payment.create({data:{ticketId:ticket.id,type,amount:type==="AI_QUOTE"?500:15000,stripeSessionId:"cs_"+id,checkoutKey:ticket.id+":"+type}});const checkout={id:p.stripeSessionId,payment_status:"paid",mode:"payment",amount_total:p.amount,currency:"usd",payment_intent:"pi_"+id,metadata:{paymentId:p.id,ticketId:ticket.id,paymentType:type}} as unknown as Stripe.Checkout.Session;return {ticket,p,checkout};}
 test("payments remain off without explicit configuration",()=>{assert.equal(getStripe(),null)});
+test("restricted Stripe keys respect test/live separation and live approval",()=>{
+  const names=["STRIPE_SECRET_KEY","PAYMENTS_MODE","PAYMENTS_LIVE_APPROVED"] as const;
+  const saved=Object.fromEntries(names.map(name=>[name,process.env[name]]));
+  try {
+    process.env.PAYMENTS_MODE="test";
+    process.env.PAYMENTS_LIVE_APPROVED="false";
+    for(const prefix of ["sk_test_","rk_test_"]) { process.env.STRIPE_SECRET_KEY=prefix+"fixture"; assert.ok(getStripe()); }
+    for(const prefix of ["sk_live_","rk_live_","pk_test_"]) { process.env.STRIPE_SECRET_KEY=prefix+"fixture"; assert.equal(getStripe(),null); }
+    process.env.PAYMENTS_MODE="live";
+    process.env.STRIPE_SECRET_KEY="rk_live_fixture";
+    assert.equal(getStripe(),null);
+    process.env.PAYMENTS_LIVE_APPROVED="true";
+    assert.ok(getStripe());
+    process.env.STRIPE_SECRET_KEY="rk_test_fixture";
+    assert.equal(getStripe(),null);
+    process.env.PAYMENTS_MODE="off";
+    assert.equal(getStripe(),null);
+  } finally { for(const name of names) { if(saved[name]===undefined)delete process.env[name];else process.env[name]=saved[name]; } }
+});
 test("unpaid completion cannot mark paid or advance",async()=>{const f=await fixture();f.checkout.payment_status="unpaid";await fulfillCheckout(f.checkout,"evt_unpaid","checkout.session.completed");assert.equal((await prisma.payment.findUniqueOrThrow({where:{id:f.p.id}})).status,"PENDING");assert.equal((await prisma.ticket.findUniqueOrThrow({where:{id:f.ticket.id}})).step,6)});
 test("amount, currency, metadata and missing records are rejected",async()=>{const f=await fixture();for(const bad of [{amount_total:1},{currency:"eur"},{metadata:{...f.checkout.metadata,paymentId:"wrong"}},{id:"unknown"}])await assert.rejects(fulfillCheckout({...f.checkout,...bad} as Stripe.Checkout.Session,"evt_mismatch","checkout.session.completed"));assert.equal((await prisma.payment.findUniqueOrThrow({where:{id:f.p.id}})).status,"PENDING")});
 test("duplicate and out of order events never regress a project",async()=>{const f=await fixture("DEPOSIT",7);await fulfillCheckout(f.checkout,"evt_late","checkout.session.completed");await fulfillCheckout(f.checkout,"evt_late","checkout.session.completed");await fulfillCheckout(f.checkout,"evt_late_again","checkout.session.completed");assert.equal((await prisma.ticket.findUniqueOrThrow({where:{id:f.ticket.id}})).step,7);assert.equal(await prisma.auditEvent.count({where:{ticketId:f.ticket.id,action:"PAYMENT_SETTLED"}}),1)});
